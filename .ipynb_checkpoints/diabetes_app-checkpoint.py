@@ -1,51 +1,33 @@
+
 import streamlit as st
 import numpy as np
 import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
 import pickle
 import io
-import streamlit_authenticator as stauth
-import yaml
-from yaml.loader import SafeLoader
+import random
 
-# --- PAGE CONFIG ---
 st.set_page_config(page_title="AI Diabetes Risk Assessment", layout="wide", initial_sidebar_state="expanded")
 
-# --- AUTHENTICATION ---
-with open('config.yaml') as file:
-    config = yaml.load(file, Loader=SafeLoader)
+quotes = [
+    "“Take care of your body. It’s the only place you have to live.” – Jim Rohn",
+    "“Health is not valued until sickness comes.” – Thomas Fuller",
+    "“It is health that is real wealth and not pieces of gold and silver.” – Mahatma Gandhi",
+    "“Your body hears everything your mind says.” – Naomi Judd",
+    "“A fit body, a calm mind, a house full of love. These things cannot be bought – they must be earned.” – Naval Ravikant",
+    "“An ounce of prevention is worth a pound of cure.” – Benjamin Franklin",
+    "“The greatest wealth is health.” – Virgil",
+    "“Don’t dig your grave with your own knife and fork.” – English Proverb",
+    "“Discipline is the bridge between goals and accomplishment.” – Jim Rohn",
+    "“Self-care is not a luxury—it is a necessity.” – Audre Lorde"
+]
 
-authenticator = stauth.Authenticate(
-    credentials=config['credentials'],
-    cookie_name=config['cookie']['name'],
-    key=config['cookie']['key'],
-    expiry_days=config['cookie']['expiry_days']
-)
-
-name, authentication_status, username = authenticator.login('Login', 'sidebar')
-
-# --- LOGIN HANDLING ---
-if authentication_status is False:
-    st.title("🔒 Access Denied")
-    st.error("Invalid username or password.")
-    st.stop()
-
-elif authentication_status is None:
-    st.title("🔐 Please Log In")
-    st.info("Use the sidebar to log in and access the app.")
-    st.stop()
-
-authenticator.logout("Logout", "sidebar")
-st.sidebar.success(f"Welcome, {name} 👋")
-
-# --- LOAD MODEL & DATA ---
 with open("Diabetesmodel.pkl", "rb") as f:
     model = pickle.load(f)
 
 dataset = pd.read_csv("diabetes.csv")
 
-# --- DARK MODE ---
+st.sidebar.success("Welcome to the AI Diabetes Risk Assessment App! 👋")
+
 dark_mode = st.sidebar.checkbox("Dark Mode", value=False)
 if dark_mode:
     st.markdown("""
@@ -69,7 +51,6 @@ else:
     </style>
     """, unsafe_allow_html=True)
 
-# --- SIDEBAR INFO ---
 st.title("🩺 AI Diabetes Risk Assessment")
 with st.sidebar:
     st.header("Input Guidelines")
@@ -80,18 +61,14 @@ with st.sidebar:
     - **Age:** 1–120  
     _These are general health ranges._
     """)
-    show_advanced = st.checkbox("Show Advanced Mode (Visualizations)", value=True)
 
-# --- SESSION STATE ---
 if "history" not in st.session_state:
     st.session_state.history = []
 if "last_prediction" not in st.session_state:
     st.session_state.last_prediction = False
 
-# --- TABS ---
-tab_input, tab_info, tab_viz, tab_history, tab_tips = st.tabs(["Input", "Info", "Visualizations", "History", "💡 Health Tips"])
+tab_input, tab_info, tab_history, tab_tips = st.tabs(["Input", "Info", "History", "💡 Health Tips"])
 
-# --- INPUT TAB ---
 with tab_input:
     col1, col2 = st.columns([3, 1])
 
@@ -155,7 +132,6 @@ with tab_input:
                 "Confidence": f"{proba:.2f}%", "Threshold": f"{threshold}%", "Risk Level": risk
             })
 
-            # Download report
             report = f"""AI Diabetes Risk Report
 -----------------------
 Glucose: {glucose}
@@ -169,7 +145,6 @@ Risk Level: {risk}
 """
             st.download_button("📄 Download Report (.txt)", report, file_name="diabetes_report.txt")
 
-# --- INFO TAB ---
 with tab_info:
     st.header("Understanding the Inputs")
     st.markdown("""
@@ -179,35 +154,6 @@ with tab_info:
     - **Age:** Risk increases after age 45.  
     """)
 
-# --- VISUALIZATION TAB ---
-if show_advanced:
-    with tab_viz:
-        st.header("Dataset Visualizations")
-        st.subheader("Heatmap of Feature Correlations")
-        fig1, ax1 = plt.subplots(figsize=(10, 8))
-        sns.heatmap(dataset.corr(), annot=True, cmap="coolwarm", ax=ax1)
-        st.pyplot(fig1)
-
-        st.subheader("Histograms")
-        features_to_plot = ['Glucose', 'BloodPressure', 'BMI', 'Age']
-        fig2, axs2 = plt.subplots(len(features_to_plot), 1, figsize=(8, 12))
-        for i, feature in enumerate(features_to_plot):
-            sns.histplot(dataset[feature], kde=True, ax=axs2[i])
-            axs2[i].set_title(f"{feature} Distribution")
-        plt.tight_layout()
-        st.pyplot(fig2)
-
-        st.subheader("Boxplot Overview")
-        fig3, ax3 = plt.subplots(figsize=(10, 6))
-        sns.boxplot(data=dataset[features_to_plot], ax=ax3)
-        st.pyplot(fig3)
-
-        st.subheader("Scatterplot: Glucose vs BMI")
-        fig4, ax4 = plt.subplots(figsize=(10, 6))
-        sns.scatterplot(x="Glucose", y="BMI", hue="Outcome", data=dataset, ax=ax4)
-        st.pyplot(fig4)
-
-# --- HISTORY TAB ---
 with tab_history:
     st.header("Prediction History")
     if st.session_state.history:
@@ -219,16 +165,66 @@ with tab_history:
     else:
         st.info("No predictions yet.")
 
-# --- TIPS TAB ---
 with tab_tips:
     st.header("💡 Personalised Health Tips")
     if not st.session_state.last_prediction:
-        st.info("Make a prediction to get tips.")
+        st.info("Make a prediction to get personalised tips.")
     else:
-        st.markdown("### Based on your input:")
-        if glucose > 140: st.warning("🔴 High Glucose: Cut sugar, stay active.")
-        if blood_pressure > 130: st.warning("🧠 High BP: Limit salt, reduce stress.")
-        if bmi > 25: st.warning("⚖️ High BMI: Adopt a healthier diet and exercise.")
-        if age > 50: st.info("👴 Age > 50: Get screened regularly.")
-        st.markdown("### General Tips:")
-        st.success("✅ Drink water\n✅ Exercise daily\n✅ Sleep 7–8 hrs\n✅ Eat fibre\n✅ Monitor sugar")
+        st.markdown(f"""
+        <div style='border-left: 5px solid #4CAF50;
+                    padding: 15px;
+                    background-color: #f0f0f0;
+                    color: #333;
+                    font-style: italic;
+                    font-size: 16px;
+                    margin-bottom: 20px;'>
+        💬 <b>Motivational Quote:</b><br>
+        {random.choice(quotes)}
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("## 🧪 Based on Your Results")
+
+        if glucose > 180:
+            st.error("❗ Very High Glucose: Consult a doctor.")
+        elif glucose > 140:
+            st.warning("🔴 High Glucose: Limit sugar and carbs.")
+        elif glucose < 70:
+            st.info("🧃 Low Glucose: Eat a healthy snack.")
+
+        if blood_pressure > 140:
+            st.error("💣 Very High Blood Pressure: Requires medical attention.")
+        elif blood_pressure > 130:
+            st.warning("🧠 High Blood Pressure: Reduce sodium and stress.")
+        elif blood_pressure < 60:
+            st.info("💧 Low Blood Pressure: Stay hydrated.")
+
+        if bmi > 35:
+            st.error("⚠️ Severely Obese: Consult a specialist.")
+        elif bmi > 30:
+            st.warning("📉 Obese: Improve diet and exercise.")
+        elif bmi > 25:
+            st.info("🚶 Overweight: Start light workouts.")
+        elif bmi < 18.5:
+            st.info("🍽️ Underweight: Increase nutritious calorie intake.")
+
+        if age > 50:
+            st.info("👴 Over 50? Get screened regularly.")
+
+        st.markdown("## 🌿 General Wellness Tips")
+        st.success("""
+        ✅ Stay hydrated  
+        ✅ Exercise 150 minutes/week  
+        ✅ Sleep 7–8 hours/night  
+        ✅ Eat fibre-rich foods  
+        ✅ Avoid sugary drinks  
+        ✅ Don’t skip meals  
+        ✅ Manage stress  
+        ✅ Take breaks from screens  
+        ✅ Practise mindful eating  
+        ✅ Control portion sizes  
+        ✅ Know your family health history  
+        ✅ Get regular check-ups  
+        """)
+
+        st.image("https://cdn-icons-png.flaticon.com/512/2917/2917991.png", width=100, caption="Stay healthy, stay happy! 🎉")
