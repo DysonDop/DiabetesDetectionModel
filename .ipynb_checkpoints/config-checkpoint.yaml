@@ -1,0 +1,13 @@
+credentials:
+  usernames:
+    testuser:
+      name: Test User
+      password: '$2b$12$KIX8E9q7v9yVpG8EGHRyhe58.JdvlcMaZZdzT8Bh7onV9GEUKIFCy'  # password: test123
+
+cookie:
+  name: diabetes_app_cookie
+  key: abcdefghijklmnop  # Random secret key
+  expiry_days: 30
+
+preauthorized:
+  emails: []
